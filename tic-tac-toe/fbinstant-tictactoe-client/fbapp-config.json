@@ -11,6 +11,7 @@
       "match_tie": {
         "example": "It's a tie!"
       }
-    }
+    },
+    "navigation_menu_version": "NAV_FLOATING"
   }
 }

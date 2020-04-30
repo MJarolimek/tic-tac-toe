@@ -9,7 +9,7 @@
   "private": true,
   "dependencies": {
     "crypto-js": "^3.1.9-1",
-    "gulp": "3.9.1",
+    "gulp": "^4.0.2",
     "gulp-html-replace": "^1.6.2",
     "gulp-rename": "^1.2.2",
     "gulp-webserver": "^0.9.1",
