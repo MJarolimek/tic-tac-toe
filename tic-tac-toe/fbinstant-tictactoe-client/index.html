@@ -46,9 +46,13 @@
     };
 
     function selectContext() {
-      FBInstant.context.chooseAsync()
+      const options = {maxSize: 2}
+      FBInstant.context.chooseAsync(options)
         .then(function() {
             startGame();          
+        })
+        .catch(err => {
+          console.log('Error triggered: ', err);
         })
     }
 

@@ -96,7 +96,7 @@ function upload(archivesFolder, filename) {
                     console.log('Bundle uploaded via the graph API');
                     console.log('Don\'t forget you need to publish the build');
                     console.log('Opening developer dashboard...');
-                    open('https://developers.facebook.com/apps/' + config.FB_appId + '/hosting/')
+                    open('https://developers.facebook.com/apps/' + config.FB_appId + '/instant-games/hosting')
                     resolve();
                 } else {
                     reject('Upload failed. Unexpected Graph API response: ' + response.body);
