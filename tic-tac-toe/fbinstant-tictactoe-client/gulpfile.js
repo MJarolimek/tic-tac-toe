@@ -120,6 +120,7 @@ gulp.task('mock', function () {
         .pipe(gulp.dest('./js/lib/'));
     gulp.src('./')
         .pipe(webserver({
+            https: true,
             open: true,
             port: 8000,
             liveReload: true

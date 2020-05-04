@@ -26,12 +26,13 @@ module.exports = function (app) {
 
     app.post('/get-match', function (request, response) {
         var signature = request.body.signature;
+        console.log('Signature: ', signature);
 
         var isValid = validate(signature);
 
         if (isValid) {
             var contextId = getEncodedData(signature);
-            console.log(contextId);
+            //console.log(contextId);
 
             loadMatchDataAsync(contextId)
                 .then(function (result) {
