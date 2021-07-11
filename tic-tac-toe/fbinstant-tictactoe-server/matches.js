@@ -1,65 +1,69 @@
 var pg = require('pg');
 var crypto = require('crypto-js');
 
-module.exports = function(app) {
-    app.post('/save-match', function(request, response) {
+module.exports = function (app) {
+    app.post('/save-match', function (request, response) {
         var contextId = request.body.contextId;
         var signature = request.body.signature;
         var player = request.body.player;
-        
+
         var isValid = validate(signature);
-        
+
         if (isValid) {
             var data = getEncodedData(signature);
             saveMatchDataAsync(contextId, data)
-            .then(function(result){
-                response.json({'success':true});
-            })
-            .catch(function(err){
-                response.json({'success':false, 'error':err});
-            });
+                .then(function (result) {
+                    response.json({ 'success': true });
+                })
+                .catch(function (err) {
+                    response.json({ 'success': false, 'error': err });
+                });
         } else {
             console.log('encoded data', getEncodedData(signature));
-            response.json({'success': false, 'error': {message:'invalid signature'}});
+            response.json({ 'success': false, 'error': { message: 'invalid signature' } });
         }
     })
-    
-    app.post('/get-match', function(request, response) {
+
+    app.post('/get-match', function (request, response) {
         var signature = request.body.signature;
-        
+        console.log('Signature: ', signature);
+
         var isValid = validate(signature);
-        
+
         if (isValid) {
             var contextId = getEncodedData(signature);
+            //console.log(contextId);
+
             loadMatchDataAsync(contextId)
-            .then(function(result){
-                if (result) {
-                    response.json({'success':true, 'contextId':contextId, 'empty': false, 'data':result});
-                } else {
-                    response.json({'success':true, 'contextId':contextId, 'empty': true});
-                }
-            })
-            .catch(function(err){
-                response.json({'success':false, 'error':err});
-            });
+                .then(function (result) {
+                    if (result) {
+                        response.json({ 'success': true, 'contextId': contextId, 'empty': false, 'data': result });
+                    } else {
+                        response.json({ 'success': true, 'contextId': contextId, 'empty': true });
+                    }
+                })
+                .catch(function (err) {
+                    response.json({ 'success': false, 'error': err });
+                });
         } else {
             console.log('encoded data', getEncodedData(signature));
-            response.json({'success':false, 'error':'invalid signature'});
+            response.json({ 'success': false, 'error': 'invalid signature' });
         }
-        
+
     })
-    
-    saveMatchDataAsync = function(contextId, data) {
-        return new Promise(function(resolve, reject){
-            pg.connect(process.env.DATABASE_URL, function(err, client, done) {
-                client.query('SELECT * FROM matches WHERE context = $1::text', [contextId], function(err, result) {
+
+    saveMatchDataAsync = function (contextId, data) {
+        return new Promise(function (resolve, reject) {
+            var pool = new pg.Pool()
+            pool.connect(function (err, client, done) {
+                client.query('SELECT * FROM matches WHERE context = $1::text', [contextId], function (err, result) {
                     if (err) {
                         reject(err)
-                    } 
-                    
+                    }
+
                     if (result.rows.length > 0) {
                         // Update current match
-                        client.query('UPDATE matches SET data = $1::text WHERE context = $2::text', [data, contextId], function(upd_err, upd_result) {
+                        client.query('UPDATE matches SET data = $1::text WHERE context = $2::text', [data, contextId], function (upd_err, upd_result) {
                             done();
                             if (err) {
                                 reject(err);
@@ -69,7 +73,7 @@ module.exports = function(app) {
                     }
                     else {
                         // Insert new match
-                        client.query('INSERT INTO matches (context, data) VALUES ($1::text, $2::text)', [contextId, data], function(ist_err, ist_result) {
+                        client.query('INSERT INTO matches (context, data) VALUES ($1::text, $2::text)', [contextId, data], function (ist_err, ist_result) {
                             done();
                             if (err) {
                                 reject(err);
@@ -79,37 +83,46 @@ module.exports = function(app) {
                     }
                 });
             });
+            // pool shutdown
+            pool.end()
         });
     };
-    
-    loadMatchDataAsync = function(contextId) {
-        return new Promise(function(resolve, reject){
-            pg.connect(process.env.DATABASE_URL, function(err, client, done) {
-                client.query('SELECT * FROM matches WHERE context = $1::text', [contextId], function(err, result) {
+
+    loadMatchDataAsync = function (contextId) {
+        return new Promise((resolve, reject) => {
+            var pool = new pg.Pool()
+            pool.connect((err, client, done) => {
+                if (err) {
+                    return console.error('Error acquiring client', err.stack)
+                }
+                client.query('SELECT * FROM matches WHERE context = $1::text', [contextId], function (err, result) {
                     done();
                     if (err) {
                         reject(err);
                     }
-                    if (result.rows.length > 0) {
+
+                    if (result && result.rows.length > 0) {
                         resolve(result.rows[0].data);
                     } else {
                         resolve();
                     }
                 });
             });
+            // pool shutdown
+            pool.end()
         });
     };
-    
-    validate = function(signedRequest) {
+
+    validate = function (signedRequest) {
         // You can set USE_SECURE_COMMUNICATION to false 
         // when doing local testing and using the FBInstant mock SDK
-        if (process.env.USE_SECURE_COMMUNICATION == false){
+        if (process.env.USE_SECURE_COMMUNICATION == false) {
             console.log('Not validating signature')
             return true;
         }
 
-        try{
-            
+        try {
+
             var firstpart = signedRequest.split('.')[0];
             var replaced = firstpart.replace(/-/g, '+').replace(/_/g, '/');
             var signature = crypto.enc.Base64.parse(replaced).toString();
@@ -122,25 +135,25 @@ module.exports = function(app) {
                 console.log('Expected', dataHash);
                 console.log('Actual', signature);
             }
-            
+
             return isValid;
         } catch (e) {
             return false;
         }
     };
-    
-    getEncodedData = function(signedRequest) {
+
+    getEncodedData = function (signedRequest) {
         // You can set USE_SECURE_COMMUNICATION to false 
         // when doing local testing and using the FBInstant mock SDK
-        if (process.env.USE_SECURE_COMMUNICATION === false){
+        if (process.env.USE_SECURE_COMMUNICATION === false) {
             return payload;
         }
 
         try {
-            
+
             const json = crypto.enc.Base64.parse(signedRequest.split('.')[1]).toString(crypto.enc.Utf8);
             const encodedData = JSON.parse(json);
-            
+
             /*
             Here's an example of encodedData can look like
             { 
@@ -150,7 +163,7 @@ module.exports = function(app) {
                 request_payload: 'backend_save' 
             } 
             */
-            
+
             return encodedData.request_payload;
         } catch (e) {
             return null;

@@ -1,41 +1,43 @@
 function gameplayScene(FBInstant, backendClient, html2canvas) {
-    this._cells = [[],[],[]];
+    this._cells = [[], [], []];
     this._matchData = {};
     this.SPRITES = ['love', 'like'];
-    
-    this.start = function() {
+
+    this.start = function () {
         this.makeGrid();
         var contextId = FBInstant.context.getID();
+
         FBInstant.player.getSignedPlayerInfoAsync(contextId)
-        .then(function(signedPlayerInfo){
-            console.log(signedPlayerInfo.getSignature());
-            return backendClient.load(signedPlayerInfo.getSignature());
-        })
-        .then(function(result){
-            console.log(result);
-            if (result.empty) {
-                return this.createNewGameAsync();
-            } else {
-                return Promise.resolve(result.data);
-            }
-        }.bind(this))
-        .then(function(backendData){
-            this.populateFromBackend(backendData);
-        }.bind(this))
-        .catch(function(error){
-            this.displayError(error);
-        }.bind(this));
+            .then(function (signedPlayerInfo) {
+                console.log(signedPlayerInfo.getSignature());
+
+                return backendClient.load(signedPlayerInfo.getSignature());
+            })
+            .then(function (result) {
+                console.log(result);
+                if (result.empty) {
+                    return this.createNewGameAsync();
+                } else {
+                    return Promise.resolve(result.data);
+                }
+            }.bind(this))
+            .then(function (backendData) {
+                this.populateFromBackend(backendData);
+            }.bind(this))
+            .catch(function (error) {
+                this.displayError(error);
+            }.bind(this));
     };
-    
-    this.makeGrid = function() {
+
+    this.makeGrid = function () {
         var sceneRoot = document.getElementById('scene');
-        
+
         var table = document.createElement('table');
         var bgc = 1;
         table.className = "gamegrid";
-        for (var j=0; j<3; j++){
+        for (var j = 0; j < 3; j++) {
             var rowEl = document.createElement('tr');
-            for (var k=0; k<3; k++) {
+            for (var k = 0; k < 3; k++) {
                 var cellEl = document.createElement('td');
                 cellEl.className = bgc ? "blue" : "grey";
                 bgc ^= 1;
@@ -50,8 +52,8 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
         }
         sceneRoot.appendChild(table);
     }
-    
-    this.populateFromBackend = function(matchData) {
+
+    this.populateFromBackend = function (matchData) {
         this._matchData = JSON.parse(matchData);
         var playerId = FBInstant.player.getID();
         if (this._matchData.players.length == 1 && this._matchData.players[0] !== playerId) {
@@ -59,17 +61,17 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
             // We need to persist their ID as the second player
             this._matchData.players.push(playerId);
         }
-        
+
         var playerIndex = this._matchData.players.indexOf(playerId);
-        for (var j=0; j<3; j++){
-            for (var k=0; k<3; k++) {
+        for (var j = 0; j < 3; j++) {
+            for (var k = 0; k < 3; k++) {
                 var cell = this._cells[j][k];
                 cell._row = j;
                 cell._column = k;
                 if (this._matchData.cells[j][k] !== -1) {
                     this.addSpriteToCell(cell, this.SPRITES[this._matchData.cells[j][k]]);
                 } else {
-                    cell.onclick= function(event) {
+                    cell.onclick = function (event) {
                         this.onCellClick(event);
                     }.bind(this);
                 }
@@ -83,69 +85,69 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
             sceneRoot.insertBefore(message, sceneRoot.firstChild);
             this.disableAllCells();
         }
-        
+
     }
-    
-    this.createNewGameAsync = function() {
+
+    this.createNewGameAsync = function () {
         var playerId = FBInstant.player.getID();
         this._matchData = {
-            'cells': [[-1,-1,-1],[-1,-1,-1],[-1,-1,-1]],
+            'cells': [[-1, -1, -1], [-1, -1, -1], [-1, -1, -1]],
             'playerTurn': 0,
             'players': [
                 playerId
             ],
         }
-        return new Promise(function(resolve, reject){
+        return new Promise(function (resolve, reject) {
             this.saveDataAsync()
-            .then((savedData) => resolve(JSON.stringify(savedData)))
-            .catch(reject);
+                .then((savedData) => resolve(JSON.stringify(savedData)))
+                .catch(reject);
         }.bind(this));
     }
-    
-    this.saveDataAsync = function() {
+
+    this.saveDataAsync = function () {
         var matchData = this._matchData;
-        return new Promise(function(resolve, reject){
+        return new Promise(function (resolve, reject) {
             console.log('going to save', JSON.stringify(matchData));
             FBInstant.player
-            .getSignedPlayerInfoAsync(JSON.stringify(matchData))
-            .then(function(result){
-                return backendClient.save(
-                    FBInstant.context.getID(),
-                    result.getPlayerID(),
-                    result.getSignature()
-                )
-            })
-            .then(function(){
-                resolve(matchData);
-            })
-            .catch(function(error){
-                reject(error);
-            })
+                .getSignedPlayerInfoAsync(JSON.stringify(matchData))
+                .then(function (result) {
+                    return backendClient.save(
+                        FBInstant.context.getID(),
+                        result.getPlayerID(),
+                        result.getSignature()
+                    )
+                })
+                .then(function () {
+                    resolve(matchData);
+                })
+                .catch(function (error) {
+                    reject(error);
+                })
         });
     }
-    
-    this.addSpriteToCell = function(cell, spriteName) {
+
+    this.addSpriteToCell = function (cell, spriteName) {
         cell.removeChild(cell.firstChild);
         var img = document.createElement('img');
         img.src = './img/' + spriteName + '.png';
         img.className = 'sprite';
         cell.appendChild(img);
     };
-    
-    this.disableAllCells = function() {
-        for (var j=0; j<3; j++){
-            for (var k=0; k<3; k++) {
+
+    this.disableAllCells = function () {
+        for (var j = 0; j < 3; j++) {
+            for (var k = 0; k < 3; k++) {
                 var cell = this._cells[j][k];
                 cell.onclick = null;
             }
         }
     }
-    
-    this.displayError = function(error) {
+
+    this.displayError = function (error) {
         console.log('Error loading from backend', error);
     }
-    
-    this.onCellClick = function(event) {
+
+    this.onCellClick = function (event) {
         var sourceElmt = event.srcElement;
         var cell = null;
         if (sourceElmt.tagName === 'IMG') {
@@ -157,34 +159,34 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
         this.disableAllCells();
         this._matchData.cells[cell._row][cell._column] = this._matchData.playerTurn;
         this._matchData.playerTurn ^= 1;
-        
+
         this.saveDataAsync()
-        .then(function(){
-            return this.getPlayerImageAsync()
-        }.bind(this))
-        .then(function(image){
-            var updateConfig = this.getUpdateConfig(image)
-            return FBInstant.updateAsync(updateConfig)
-        }.bind(this))
-        .then(function() {
-            // closes the game after the update is posted.
-            FBInstant.quit();
-        });        
+            .then(function () {
+                return this.getPlayerImageAsync()
+            }.bind(this))
+            .then(function (image) {
+                var updateConfig = this.getUpdateConfig(image)
+                return FBInstant.updateAsync(updateConfig)
+            }.bind(this))
+            .then(function () {
+                // closes the game after the update is posted.
+                FBInstant.quit();
+            });
     }
-    
-    this.getUpdateConfig = function(base64Picture) {
-        
+
+    this.getUpdateConfig = function (base64Picture) {
+
         var isMatchWon = this.isMatchWon();
         var isBoardFull = this.isBoardFull();
         var updateData = null;
         var playerName = FBInstant.player.getName();
-        
+
         if (isMatchWon) {
             // Game over, player won
             updateData =
             {
                 action: 'CUSTOM',
-                cta: 'Rematch!' ,
+                cta: 'Rematch!',
                 image: base64Picture,
                 text: {
                     default: playerName + ' has won!',
@@ -195,17 +197,17 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
                     }
                 },
                 template: 'match_won',
-                data: { rematchButton:true },
+                data: { rematchButton: true },
                 strategy: 'IMMEDIATE',
                 notification: 'NO_PUSH',
             };
-            
+
         } else if (isBoardFull) {
             // Game over, tie
             updateData =
             {
                 action: 'CUSTOM',
-                cta: 'Rematch!' ,
+                cta: 'Rematch!',
                 image: base64Picture,
                 text: {
                     default: 'It\'s a tie!',
@@ -216,7 +218,7 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
                     }
                 },
                 template: 'match_tie',
-                data: { rematchButton:true },
+                data: { rematchButton: true },
                 strategy: 'IMMEDIATE',
                 notification: 'NO_PUSH',
             };
@@ -225,7 +227,7 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
             updateData =
             {
                 action: 'CUSTOM',
-                cta: 'Play your turn!' ,
+                cta: 'Play your turn!',
                 image: base64Picture,
                 text: {
                     default: playerName + ' has played. Now it\'s your turn',
@@ -241,37 +243,37 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
                 notification: 'NO_PUSH',
             };
         }
-        
+
         return updateData;
-        
+
     }
-    
-    this.isMatchWon = function() {
+
+    this.isMatchWon = function () {
         function checkMatchAll(cells) {
             return (cells[0] != -1) && (cells[0] == cells[1]) && (cells[1] == cells[2]);
         }
 
         var cells = this._matchData.cells;
-        
-        var matchRow = 
-            checkMatchAll(cells[0]) || 
-            checkMatchAll(cells[1]) || 
+
+        var matchRow =
+            checkMatchAll(cells[0]) ||
+            checkMatchAll(cells[1]) ||
             checkMatchAll(cells[2]);
-        var matchColumn = 
+        var matchColumn =
             checkMatchAll([cells[0][0], cells[1][0], cells[2][0]]) ||
             checkMatchAll([cells[0][1], cells[1][1], cells[2][1]]) ||
             checkMatchAll([cells[0][2], cells[1][2], cells[2][2]]);
-        var matchAcross = 
+        var matchAcross =
             checkMatchAll([cells[0][0], cells[1][1], cells[2][2]]) ||
             checkMatchAll([cells[2][0], cells[1][1], cells[0][2]]);
-        
+
         var won = matchRow || matchColumn || matchAcross;
         return won;
     };
-    
-    this.isBoardFull = function() {
-        for (var j=0; j<3; j++){
-            for (var k=0; k<3; k++) {
+
+    this.isBoardFull = function () {
+        for (var j = 0; j < 3; j++) {
+            for (var k = 0; k < 3; k++) {
                 if (this._matchData.cells[j][k] == -1) {
                     return false;
                 }
@@ -279,16 +281,16 @@ function gameplayScene(FBInstant, backendClient, html2canvas) {
         }
         return true;
     }
-    
-    this.getPlayerImageAsync = function() {
-        return new Promise(function(resolve, reject){
+
+    this.getPlayerImageAsync = function () {
+        return new Promise(function (resolve, reject) {
             var sceneRoot = document.getElementById('scene');
             var sceneWidth = sceneRoot.offsetWidth;
-            html2canvas(sceneRoot, {width:sceneWidth*3, x:-(sceneWidth)})
-                .then(function(canvas){
+            html2canvas(sceneRoot, { width: sceneWidth * 3, x: -(sceneWidth) })
+                .then(function (canvas) {
                     resolve(canvas.toDataURL("image/png"));
                 })
-                .catch(function(err){
+                .catch(function (err) {
                     reject(err);
                 })
         })

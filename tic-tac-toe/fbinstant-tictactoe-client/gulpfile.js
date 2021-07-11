@@ -21,6 +21,7 @@ function make() {
         'js/**/*',
         'css/**/*',
         'img/**/*',
+        'fbapp-config.json',
         '!js/mock/**/*',
         '!css/mock/**/*',
         '!assets/mock/**/*'
@@ -28,81 +29,81 @@ function make() {
     var sdkPath = SDK_PATH
 
     return Promise.all([
-        new Promise(function(resolve, reject){
+        new Promise(function (resolve, reject) {
             gulp.src(LIB_FILES)
-            .on('error', reject)
-            .pipe(gulp.dest('./js/lib/'))
-            .on('end', resolve)
+                .on('error', reject)
+                .pipe(gulp.dest('./js/lib/'))
+                .on('end', resolve)
         }),
-        new Promise(function(resolve, reject){
+        new Promise(function (resolve, reject) {
             gulp.src(sourceFiles, { base: './' })
-            .on('error', reject)
-            .pipe(gulp.dest(BUILD_FOLDER))
-            .on('end', resolve)
+                .on('error', reject)
+                .pipe(gulp.dest(BUILD_FOLDER))
+                .on('end', resolve)
         }),
-        new Promise(function(resolve, reject){
+        new Promise(function (resolve, reject) {
             gulp.src('./index.html')
-            .on('error', reject)
-            .pipe(htmlreplace({
-                'js': sdkPath
-            }))
-            .pipe(gulp.dest(BUILD_FOLDER))
-            .on('end', resolve)
+                .on('error', reject)
+                .pipe(htmlreplace({
+                    'js': sdkPath
+                }))
+                .pipe(gulp.dest(BUILD_FOLDER))
+                .on('end', resolve)
         }),
     ]);
 }
 
-function archive(archivesFolder, filename){
-    return new Promise(function(resolve, reject){
+function archive(archivesFolder, filename) {
+    return new Promise(function (resolve, reject) {
         console.log('Going to create zip archive: ' + archivesFolder + '/' + filename);
         gulp.src([
             __dirname + '/build/**',
-            '!'+ __dirname + '/build/archives/**',
+            '!' + __dirname + '/build/archives/**',
             '!**.zip'
         ])
-        .pipe(zip(filename))
-        .on('error', reject)
-        .pipe(gulp.dest(archivesFolder))
-        .on('end', function(){
-            console.log('ZIP archive created')
-            resolve();
-        })
+            .pipe(zip(filename))
+            .on('error', reject)
+            .pipe(gulp.dest(archivesFolder))
+            .on('end', function () {
+                console.log('ZIP archive created')
+                resolve();
+            })
     })
 }
 
 function upload(archivesFolder, filename) {
-    return new Promise(function(resolve, reject){
+    return new Promise(function (resolve, reject) {
         console.log('Going to upload archive: ' + archivesFolder + '/' + filename);
         request.post({
-            url: 'https://graph-video.facebook.com/'+config.FB_appId+'/assets',
+            url: 'https://graph-video.facebook.com/' + config.FB_appId + '/assets',
             formData: {
-                'access_token' : config.FB_uploadAccessToken,
+                'access_token': config.FB_uploadAccessToken,
                 'type': 'BUNDLE',
                 'comment': 'Uploaded via gulp task',
                 'asset': {
-                    value: fs.createReadStream(__dirname + '/'+ archivesFolder + '/' + filename),
+                    value: fs.createReadStream(__dirname + '/' + archivesFolder + '/' + filename),
                     options: {
                         filename: filename,
                         contentType: 'application/octet-stream'
                     }
                 }
             },
-        }, function(error, response, body) {
+        }, function (error, response, body) {
             if (error || !body) reject(error);
-                try {
-                    var body = JSON.parse(response.body);
-                    if (body.success) {
-                        console.log('Bundle uploaded via the graph API');
-                        console.log('Don\'t forget you need to publish the build');
-                        console.log('Opening developer dashboard...');
-                        open('https://developers.facebook.com/apps/'+ config.FB_appId +'/hosting/')
-                        resolve();
-                    } else {
-                        reject('Upload failed. Unexpected Graph API response: ' + response.body);
-                    }            
-                } catch (e) {
-                    reject('Upload failed. Invalid response response: ' + response.body);
+            try {
+                var body = JSON.parse(response.body);
+                if (body.success) {
+                    console.log('Bundle uploaded via the graph API');
+                    console.log('Don\'t forget you need to publish the build');
+                    console.log('Opening developer dashboard...');
+                    open('https://developers.facebook.com/apps/' + config.FB_appId + '/instant-games/hosting')
+                    resolve();
+                } else {
+                    reject('Upload failed. Unexpected Graph API response: ' + response.body);
                 }
+            } catch (e) {
+                reject('Upload failed. Invalid response response: ' + response.body);
+            }
         });
     });
 }
@@ -114,15 +115,16 @@ function upload(archivesFolder, filename) {
  *  Use it for rapid prototyping and for developing game features that are not connected to the SDK.
  * 
  */
- gulp.task('mock', function() {
+gulp.task('mock', function () {
     gulp.src(LIB_FILES)
         .pipe(gulp.dest('./js/lib/'));
     gulp.src('./')
-      .pipe(webserver({
-          open: true,
-          port: 8000,
-          liveReload:true
-      }));
+        .pipe(webserver({
+            https: true,
+            open: true,
+            port: 8000,
+            liveReload: true
+        }));
 });
 
 /*
@@ -133,19 +135,19 @@ function upload(archivesFolder, filename) {
  * actually executed by Facebook's services.
  * 
  */
- gulp.task('test', function() {
-  make()
-    .then(function() {
-        gulp.src(BUILD_FOLDER)
-          .pipe(webserver({
-              https: true,
-              port: 8000,
-              open: 'https://www.facebook.com/embed/instantgames/'+config.FB_appId+'/player?game_url=https://localhost:8000'
-          }));      
-    })
-    .catch(function(error){
-        console.log('gulp:test failed', error);
-    })
+gulp.task('test', function () {
+    make()
+        .then(function () {
+            gulp.src(BUILD_FOLDER)
+                .pipe(webserver({
+                    https: true,
+                    port: 8000,
+                    open: 'https://www.facebook.com/embed/instantgames/' + config.FB_appId + '/player?game_url=https://localhost:8000'
+                }));
+        })
+        .catch(function (error) {
+            console.log('gulp:test failed', error);
+        })
 
 });
 
@@ -153,20 +155,20 @@ function upload(archivesFolder, filename) {
  * `gulp push`
  * Compresses the game into a .zip archive and uploads it to the Developer website
  *
- */ 
- gulp.task('push', function() {
+ */
+gulp.task('push', function () {
     const filename = uuid() + '.zip';
     const archivesFolder = 'build/archives';
-    
+
     make()
-        .then(function(){
+        .then(function () {
             archive(archivesFolder, filename)
-            .then(function(){
-                upload(archivesFolder, filename)
-                .then(function(){
-                    console.log('Success!');
+                .then(function () {
+                    upload(archivesFolder, filename)
+                        .then(function () {
+                            console.log('Success!');
+                        })
                 })
-            })
         })
 
 });
